@@ -13,7 +13,7 @@ public class SimplePlayer : NetworkBehaviour
     [SerializeField] private float fireDistance = 20f;
     [SerializeField] private LayerMask hitMask;
 
-    [Networked] private TickTimer FireCooldown {  get; set; }
+    [Networked] private TickTimer FireCooldown { get; set; }
     [SerializeField] private float fireInterval = 0.2f;
 
     [SerializeField] private Animator animator;
@@ -22,23 +22,23 @@ public class SimplePlayer : NetworkBehaviour
     [Header("Jump")]
     [SerializeField] private float jumpForce = 6f;
     [SerializeField] private float gravity = -20f;
-    [SerializeField] private Transform groudCheck;
+    [SerializeField] private Transform groundCheck;
     [SerializeField] private float groundCheckRadius = 0.2f;
     [SerializeField] private LayerMask groundMask;
 
-    [Networked] private int JumpTick {  get; set; }
+    [Networked] private int JumpTick { get; set; }
     private int _lastRenderedJumpTeck = -1;
 
     [Networked] private float VerticalVelocity { get; set; }
     [Networked] private NetworkBool IsGroundedNet { get; set; }
     [Networked] private NetworkBool JumpTriggeredNet { get; set; }
     [Networked] private NetworkButtons PreviousButtons { get; set; }
-    
+
     private int _lastJumpVisualTick = -1;
 
     [SerializeField] private GameObject cameraRoot;
 
-    private Transform cameraRootTransform;
+    private Transform cameraRootTrasnform;
 
     private Camera localCamera;
     private Transform cameraTransform;
@@ -60,6 +60,7 @@ public class SimplePlayer : NetworkBehaviour
     [SerializeField] private float pickupDistance = 3.0f;
     [SerializeField] private float dropForce = 2.0f;
     [SerializeField] private LayerMask pickupMask;
+
     [Networked] private NetworkObject HeldBox { get; set; }
 
     public Vector3 HoldPointPosition =>
@@ -76,10 +77,10 @@ public class SimplePlayer : NetworkBehaviour
 
         if (isMine)
         {
-            cameraRootTransform = cameraRoot.transform;
+            cameraRootTrasnform = cameraRoot.transform;
 
             localCamera = cameraRoot.GetComponentInChildren<Camera>(true);
-            if(localCamera != null)
+            if (localCamera != null)
             {
                 cameraTransform = localCamera.transform;
             }
@@ -97,12 +98,13 @@ public class SimplePlayer : NetworkBehaviour
     {
         if (GetInput<FusionBootstrap.NetworkInputData>(out var inputData))
         {
+
             Quaternion camYawRotation = Quaternion.Euler(0.0f, inputData.cameraYaw, 0.0f);
 
-            Vector3 forwoard = camYawRotation * Vector3.forward;
+            Vector3 forward = camYawRotation * Vector3.forward;
             Vector3 right = camYawRotation * Vector3.right;
 
-            Vector3 move = forwoard * inputData.move.y + right * inputData.move.x;
+            Vector3 move = forward * inputData.move.y + right * inputData.move.x;
 
             if (move.sqrMagnitude > 1f)
                 move.Normalize();
@@ -111,21 +113,21 @@ public class SimplePlayer : NetworkBehaviour
 
             //바닥 체크
             bool grounded = Physics.CheckSphere(
-                groudCheck != null ? groudCheck.position : transform.position + Vector3.down * 0.9f,
+                groundCheck != null ? groundCheck.position : transform.position + Vector3.down * 0.9f,
                 groundCheckRadius,
                 groundMask
             );
 
             IsGroundedNet = grounded;
 
-            //바닥에 붙어있을때 처리
-            if(grounded && VerticalVelocity < 0.0f)
+            //바닥에 붙어있을때 처리 
+            if (grounded && VerticalVelocity < 0.0f)
             {
                 VerticalVelocity = 0f;
             }
 
             //점프 
-            if (grounded && inputData.buttons.WasPressed(PreviousButtons, (int) FusionBootstrap.InputButton.Jump))
+            if (grounded && inputData.buttons.WasPressed(PreviousButtons, (int)FusionBootstrap.InputButton.Jump))
             {
                 VerticalVelocity = jumpForce;
                 IsGroundedNet = false;
@@ -133,20 +135,20 @@ public class SimplePlayer : NetworkBehaviour
                 JumpTick = Runner.Tick;
             }
 
-            //중력
+            //중력 
             VerticalVelocity += gravity * Runner.DeltaTime;
 
-            //이동 분리
+            //이동 분리 
             Vector3 horizontalMove = new Vector3(move.x * moveSpeed, 0f, move.z * moveSpeed);
             transform.position += horizontalMove * Runner.DeltaTime;
 
-            if(!(grounded && VerticalVelocity <= 0f))
+            if (!(grounded && VerticalVelocity <= 0f))
             {
                 Vector3 verticalMove = new Vector3(0f, VerticalVelocity, 0f);
                 transform.position += verticalMove * Runner.DeltaTime;
             }
 
-            PreviousButtons = inputData.buttons;
+
 
             if (move.sqrMagnitude > 0.001f)
             {
@@ -175,9 +177,9 @@ public class SimplePlayer : NetworkBehaviour
                 FireCooldown = TickTimer.CreateFromSeconds(Runner, fireInterval);
             }
 
-
-            PreviousButtons = inputData.buttons;
         }
+
+        PreviousButtons = inputData.buttons;
     }
 
     private void Fire()
@@ -204,6 +206,7 @@ public class SimplePlayer : NetworkBehaviour
             bullet.Init(Object.InputAuthority);
         }
     }
+
     private void FireLagCompensated()
     {
         if (!Object.HasStateAuthority)
@@ -234,10 +237,10 @@ public class SimplePlayer : NetworkBehaviour
                 }
             }
         }
+
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-
     private void RPC_PlayHitEffect(Vector3 pos, Vector3 normal)
     {
         if (EffectManager.instance == null) return;
@@ -251,10 +254,9 @@ public class SimplePlayer : NetworkBehaviour
         animator.SetFloat("Speed", MoveSpeedNet);
         animator.SetBool("Grounded", IsGroundedNet);
         animator.SetBool("Jump", !IsGroundedNet && VerticalVelocity > 0.1f);
-        animator.SetBool("FreeFall", !IsGroundedNet && VerticalVelocity <= 0.1f); ;
+        animator.SetBool("FreeFall", !IsGroundedNet && VerticalVelocity <= 0.1f);
         animator.SetFloat("MotionSpeed", 3f);
     }
-
 
     private void LateUpdate()
     {
@@ -265,13 +267,12 @@ public class SimplePlayer : NetworkBehaviour
 
         cameraYaw += mouseX * cameraSenesitivity;
         cameraPitch -= mouseY * cameraSenesitivity;
-
         cameraPitch = Mathf.Clamp(cameraPitch, minPitch, maxPitch);
 
         //yaw는 루트가 담당
         cameraRoot.transform.localRotation = Quaternion.Euler(0.0f, cameraYaw - transform.eulerAngles.y, 0f);
 
-        //pitch는 카메라가 담당
+        //pitch는 실제 카메라가 담당
         cameraTransform.localRotation = Quaternion.Euler(cameraPitch, 0.0f, 0.0f);
 
         LocalCameraYaw = cameraTransform.eulerAngles.y;
@@ -302,6 +303,7 @@ public class SimplePlayer : NetworkBehaviour
     {
         if (!Object.HasStateAuthority)
             return false;
+
         if (HeldBox == null)
             return false;
 
